@@ -1,0 +1,27 @@
+" Config for localvimrc
+" https://github.com/embear/vim-localvimrc
+
+" We use spaces for indentation, tabs are wrong, so make them visible
+" Trailing whitespaces should also be avoided
+set listchars=tab:→\ ,trail:·,extends:»,precedes:«,nbsp:~
+" Add this to your .vimrc to make these characters visible:
+" set list
+
+" Maximum width is 120 characters
+set textwidth=120
+" Add this to your .vimrc to hightlight the next column (121):
+" set colorcolumn=+1
+
+" Autoload YouCompleteMe config without confirmation
+let g:ycm_confirm_extra_conf = 0
+
+" For puthon we use PEP 0008 guidlines (that means 4 spaces per indentation level)
+" https://www.python.org/dev/peps/pep-0008/
+autocmd FileType python set tabstop=4|set shiftwidth=4|set expandtab
+" Everything else should be indented by 8 spaces
+" See my.mail.ru C/C++ coding style guide:
+" https://confluence.mail.ru/pages/viewpage.action?pageId=54010392
+autocmd FileType c set tabstop=8|set shiftwidth=8|set expandtab
+autocmd FileType cpp set tabstop=8|set shiftwidth=8|set expandtab
+autocmd FileType cmake set tabstop=8|set shiftwidth=8|set expandtab
+

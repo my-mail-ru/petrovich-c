@@ -1,0 +1,61 @@
+---
+Language:                                               Cpp
+# BasedOnStyle:  WebKit
+AccessModifierOffset:                                   -8
+AlignAfterOpenBracket:                                  true
+AlignEscapedNewlinesLeft:                               true
+AlignOperands:                                          true
+AlignTrailingComments:                                  true
+AllowAllParametersOfDeclarationOnNextLine:              true
+AllowShortBlocksOnASingleLine:                          false
+AllowShortCaseLabelsOnASingleLine:                      false
+AllowShortIfStatementsOnASingleLine:                    false
+AllowShortLoopsOnASingleLine:                           false
+AllowShortFunctionsOnASingleLine:                       false
+AlwaysBreakAfterDefinitionReturnType:                   false
+AlwaysBreakTemplateDeclarations:                        false
+AlwaysBreakBeforeMultilineStrings:                      false
+BreakBeforeBinaryOperators:                             All
+BreakBeforeTernaryOperators:                            true
+BreakConstructorInitializersBeforeComma:                true
+BinPackParameters:                                      true
+BinPackArguments:                                       true
+ColumnLimit:                                            120
+ConstructorInitializerAllOnOneLineOrOnePerLine:         false
+ConstructorInitializerIndentWidth:                      8
+DerivePointerAlignment:                                 false
+ExperimentalAutoDetectBinPacking:                       false
+IndentCaseLabels:                                       false
+IndentWrappedFunctionNames:                             false
+IndentFunctionDeclarationAfterType:                     false
+MaxEmptyLinesToKeep:                                    1
+KeepEmptyLinesAtTheStartOfBlocks:                       true
+NamespaceIndentation:                                   None
+PenaltyBreakBeforeFirstCallParameter:                   19
+PenaltyBreakComment:                                    300
+PenaltyBreakString:                                     1000
+PenaltyBreakFirstLessLess:                              120
+PenaltyExcessCharacter:                                 1000000
+PenaltyReturnTypeOnItsOwnLine:                          60
+PointerAlignment:                                       Right
+SpacesBeforeTrailingComments:                           1
+Cpp11BracedListStyle:                                   false
+Standard:                                               Cpp11
+IndentWidth:                                            8
+TabWidth:                                               8
+UseTab:                                                 Never
+BreakBeforeBraces:                                      Linux
+SpacesInParentheses:                                    false
+SpacesInSquareBrackets:                                 false
+SpacesInAngles:                                         false
+SpaceInEmptyParentheses:                                false
+SpacesInCStyleCastParentheses:                          false
+SpaceAfterCStyleCast:                                   false
+SpacesInContainerLiterals:                              true
+SpaceBeforeAssignmentOperators:                         true
+ContinuationIndentWidth:                                8
+CommentPragmas:                                         '^ IWYU pragma:'
+SpaceBeforeParens:                                      ControlStatements
+DisableFormat:                                          false
+...
+
