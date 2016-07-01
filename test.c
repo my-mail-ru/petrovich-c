@@ -46,13 +46,19 @@ int main(int argc, char **argv)
         size_t name_len = strlen(name_str);
 
         petr_context_t *ctx;
-        assert(petr_init_from_file("rules.yml", &ctx) == 0);
+        int rc = petr_init_from_file("rules.yml", &ctx);
+        if (rc != 0) {
+                fprintf(stderr, "Failed to read the rules");
+                return 1;
+        }
         char buf[1024];
         for (int dest_case = CASE_NOMINATIVE; dest_case <= CASE_PREPOSITIONAL; dest_case++) {
                 size_t res_size;
-                assert(petr_inflect(ctx, name_str, name_len, kind, gender, dest_case, buf, sizeof(buf), &res_size)
-                       == 0);
-                printf("%.*s\n", (int)res_size, buf);
+                int rc = petr_inflect(ctx, name_str, name_len, kind, gender, dest_case, buf, sizeof(buf), &res_size);
+                if (rc == 0)
+                        printf("%.*s\n", (int)res_size, buf);
+                else
+                        printf("ERROR\n");
         }
         petr_free_context(ctx);
         return 0;

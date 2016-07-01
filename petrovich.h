@@ -12,6 +12,7 @@
 typedef enum {
         ERR_INVALID_RULES       = -1,
         ERR_NOMEM               = -2,
+        ERR_BUF                 = -3,
 } petr_error_t;
 
 typedef enum {

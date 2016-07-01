@@ -19,7 +19,7 @@
 #define CASE_COUNT              (CASE_PREPOSITIONAL + 1)
 
 #ifdef NDEBUG
-#define debug_err(...) (0 && printf(__VA_ARGS__))
+#define debug_err(...) ((void)(0 && printf(__VA_ARGS__)))
 #else
 #define debug_err(...)                        \
         do {                                  \
@@ -212,7 +212,8 @@ static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_no
         }
 
         mod_t *dest_mod = dest->mods;
-        for (yaml_node_item_t *p = mods->data.sequence.items.start; p != mods->data.sequence.items.top; p++) {
+        for (yaml_node_item_t *p = mods->data.sequence.items.start; p != mods->data.sequence.items.top;
+             p++, dest_mod++) {
                 yaml_node_t *node = yaml_document_get_node(&ctx->yaml, *p);
                 if (node->type != YAML_SCALAR_NODE) {
                         debug_err("invalid node type");
@@ -405,12 +406,25 @@ static int load_yaml(petr_context_t *ctx)
 }
 
 #ifndef NDEBUG
+static void dump_rule(const mod_rule_t *rule, FILE *fp)
+{
+        fprintf(fp, "        %zu matches:", rule->num_matches);
+        for (size_t i = 0; i < rule->num_matches; i++)
+                fprintf(fp, " '%.*s'", (int)rule->match[i].len, rule->match[i].data);
+        fprintf(fp, "\n        mods:");
+        for (size_t i = 0; i < CASE_COUNT - 1; i++) {
+                const mod_t *mod = &rule->mods[i];
+                fprintf(fp, " -%zu+'%.*s'", mod->cnt_remove, (int)mod->add_suffix.len, mod->add_suffix.data);
+        }
+        fprintf(fp, "\n");
+}
+
 static void dump_rules(const mod_rule_arr_t *arr, FILE *fp)
 {
         for (size_t i = 0; i < arr->num_rules; i++) {
                 fprintf(fp, "      rule %zu\n", i);
                 const mod_rule_t *rule = &arr->rules[i];
-                fprintf(fp, "        %zu matches\n", rule->num_matches);
+                dump_rule(rule, fp);
         }
 }
 
@@ -470,7 +484,6 @@ int petr_init_from_string(const char *data, size_t len, petr_context_t **pctx)
                 return -1;
         }
         yaml_parser_delete(&parser);
-        dump_context(ctx, stdout);
         return 0;
 del_parser:
         yaml_parser_delete(&parser);
@@ -503,14 +516,92 @@ void petr_free_context(petr_context_t *ctx)
         free(ctx);
 }
 
+/**
+ * Try to match the name against rules array
+ *
+ * @param arr Rules array
+ * @param full_match If true, match full name, otherwise match ending
+ * @param name Name string
+ * @returns Matched rule, or NULL if not found
+ */
+static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool full_match, cbuf_t name)
+{
+        for (size_t i = 0; i < arr->num_rules; i++) {
+                const mod_rule_t *rule = &arr->rules[i];
+                for (size_t j = 0; j < rule->num_matches; j++) {
+                        cbuf_t match = rule->match[j];
+                        if (match.len > name.len)
+                                continue;
+                        if (full_match && match.len != name.len)
+                                continue;
+                        if (memcmp(name.data + name.len - match.len, match.data, match.len) == 0)
+                                return rule;
+                }
+        }
+        return NULL;
+}
+
+static int copy_buf(cbuf_t src, buf_t dest, size_t *dest_len)
+{
+        if (dest.len < src.len + 1)
+                return ERR_BUF;
+
+        memcpy(dest.data, src.data, src.len);
+        *dest_len = src.len;
+        dest.data[src.len] = '\0';
+        return 0;
+}
+
+static int append_buf(cbuf_t src, buf_t dest, size_t *dest_len)
+{
+        if (dest.len < src.len + *dest_len + 1)
+                return ERR_BUF;
+
+        memcpy(dest.data + *dest_len, src.data, src.len);
+        (*dest_len) += src.len;
+        dest.data[*dest_len] = '\0';
+        return 0;
+}
+
+/**
+ * Remove one UTF-8 codepoint from the end of the string.
+ *
+ * @returns Length of the result.
+ */
+static size_t pop_one_codepoint(cbuf_t str)
+{
+        while (str.len != 0 && (str.data[str.len - 1] & 0xC0) == 0x80)
+                str.len--;
+        return str.len;
+}
+
+static int apply_rule(const mod_t *mod, cbuf_t name, buf_t dest, size_t *dest_len)
+{
+        cbuf_t trimmed = name;
+        for (size_t i = 0; i < mod->cnt_remove; i++)
+                trimmed.len = pop_one_codepoint(trimmed);
+
+        int rc = copy_buf(trimmed, dest, dest_len);
+        if (rc != 0)
+                return rc;
+        return append_buf(mod->add_suffix, dest, dest_len);
+}
+
 static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_case_t dest_case, buf_t dest, size_t *dest_len)
 {
-        (void)rules;
-        (void)name;
-        (void)dest_case;
-        (void)dest;
-        *dest_len = 0;
-        return 0;
+        if (dest_case == CASE_NOMINATIVE)
+                return copy_buf(name, dest, dest_len);
+
+        /* First try to search in exceptions. */
+        const mod_rule_t *rule = match_rules(&rules->exceptions, true, name);
+        /* If not found, search in suffixes. */
+        if (rule == NULL)
+                rule = match_rules(&rules->suffixes, false, name);
+        /* If not found, copy as-is. */
+        if (rule == NULL)
+                return copy_buf(name, dest, dest_len);
+
+        return apply_rule(&rule->mods[dest_case - 1], name, dest, dest_len);
 }
 
 int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
