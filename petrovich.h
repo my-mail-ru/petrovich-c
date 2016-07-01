@@ -10,7 +10,8 @@
 #include <stddef.h>
 
 typedef enum {
-        ERR_INVALID_RULES,
+        ERR_INVALID_RULES       = -1,
+        ERR_NOMEM               = -2,
 } petr_error_t;
 
 typedef enum {
@@ -40,13 +41,13 @@ int petr_init_from_file(const char *path, petr_context_t **ctx);
 int petr_init_from_string(const char *data, size_t len, petr_context_t **ctx);
 void petr_free_context(petr_context_t *ctx);
 
-int petr_inflect(petr_context_t *pctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
+int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
                  petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
-int petr_inflect_first_name(petr_context_t *pctx, const char *data, size_t len, petr_gender_t gender,
+int petr_inflect_first_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                             petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
-int petr_inflect_middle_name(petr_context_t *pctx, const char *data, size_t len, petr_gender_t gender,
+int petr_inflect_middle_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                              petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
-int petr_inflect_last_name(petr_context_t *pctx, const char *data, size_t len, petr_gender_t gender,
+int petr_inflect_last_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                            petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
 
 #endif
