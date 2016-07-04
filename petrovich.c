@@ -39,6 +39,7 @@ typedef struct {
         size_t num_matches;
         cbuf_t *match;
         mod_t mods[CASE_COUNT - 1];
+        petr_gender_t gender;
         bool first_word;
 } mod_rule_t;
 
@@ -61,7 +62,7 @@ typedef struct {
 
 struct petr_context {
         yaml_document_t yaml;
-        rules_set_t sets[NAME_KIND_COUNT][GENDER_COUNT];
+        rules_set_t sets[NAME_KIND_COUNT];
 };
 
 int petr_init_from_file(const char *path, petr_context_t **ctx)
@@ -172,6 +173,8 @@ static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_no
                 return ERR_INVALID_RULES;
         }
 
+        dest->gender = parsed_node->gender;
+
         dest->num_matches = num_test;
         dest->match = calloc(sizeof(cbuf_t), num_test);
         if (dest->match == NULL) {
@@ -254,27 +257,16 @@ static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_no
 }
 
 /**
- * Load rules for a single (kind, gender) pair
+ * Load a single rules array (either suffixes or exceptions of some name kind)
  */
-static int load_gender(petr_context_t *ctx, petr_gender_t gender, const yaml_node_t *node, mod_rule_arr_t *dest)
+static int load_rule_arr(petr_context_t *ctx, const yaml_node_t *node, mod_rule_arr_t *dest)
 {
         if (node->type != YAML_SEQUENCE_NODE) {
                 debug_err("node is not an array");
                 return ERR_INVALID_RULES;
         }
 
-        /* Count how many items to allocate. */
-        size_t cnt_items = 0;
-        for (yaml_node_item_t *p = node->data.sequence.items.start; p != node->data.sequence.items.top; p++) {
-                yaml_node_t *node = yaml_document_get_node(&ctx->yaml, *p);
-                yaml_mod_rules_t parsed_node;
-                int rc = parse_mod_rules(ctx, node, &parsed_node);
-                if (rc != 0)
-                        return rc;
-                if (parsed_node.gender == gender)
-                        cnt_items++;
-        }
-
+        size_t cnt_items = node->data.sequence.items.top - node->data.sequence.items.start;
         dest->rules = calloc(sizeof(mod_rule_t), cnt_items);
         if (!dest->rules) {
                 debug_err("allocation failed");
@@ -283,14 +275,13 @@ static int load_gender(petr_context_t *ctx, petr_gender_t gender, const yaml_nod
 
         dest->num_rules = cnt_items;
         mod_rule_t *dest_item = dest->rules;
-        /* Iterate again and load. */
         for (yaml_node_item_t *p = node->data.sequence.items.start; p != node->data.sequence.items.top; p++) {
                 yaml_node_t *node = yaml_document_get_node(&ctx->yaml, *p);
                 yaml_mod_rules_t parsed_node;
-                parse_mod_rules(ctx, node, &parsed_node);
-                if (parsed_node.gender != gender)
-                        continue;
-                int rc = load_mod_rules(ctx, &parsed_node, dest_item);
+                int rc = parse_mod_rules(ctx, node, &parsed_node);
+                if (rc != 0)
+                        return rc;
+                rc = load_mod_rules(ctx, &parsed_node, dest_item);
                 if (rc != 0)
                         return rc;
                 dest_item++;
@@ -329,12 +320,9 @@ static int load_name_kind(petr_context_t *ctx, const yaml_node_t *node, rules_se
                         return ERR_INVALID_RULES;
                 }
 
-                for (int gender = 0; gender < GENDER_COUNT; gender++) {
-                        rules_set_t *set = &dest[gender];
-                        int rc = load_gender(ctx, gender, val_node, is_suffixes ? &set->suffixes : &set->exceptions);
-                        if (rc != 0)
-                                return rc;
-                }
+                int rc = load_rule_arr(ctx, val_node, is_suffixes ? &dest->suffixes : &dest->exceptions);
+                if (rc != 0)
+                        return rc;
         }
         return 0;
 }
@@ -380,7 +368,7 @@ static int load_yaml(petr_context_t *ctx)
                         return ERR_INVALID_RULES;
                 }
 
-                int rc = load_name_kind(ctx, val_node, ctx->sets[kind]);
+                int rc = load_name_kind(ctx, val_node, &ctx->sets[kind]);
                 if (rc != 0)
                         return rc;
 
@@ -400,10 +388,23 @@ static int load_yaml(petr_context_t *ctx)
 #ifndef NDEBUG
 static void dump_rule(const mod_rule_t *rule, FILE *fp)
 {
-        fprintf(fp, "        %zu matches:", rule->num_matches);
+        const char *gender_str;
+        switch (rule->gender) {
+        case GEND_MALE:
+                gender_str = "male";
+                break;
+        case GEND_FEMALE:
+                gender_str = "female";
+                break;
+        case GEND_ANDROGYNOUS:
+                gender_str = "androgynous";
+                break;
+        }
+        fprintf(fp, "      gender: %s\n", gender_str);
+        fprintf(fp, "      %zu matches:", rule->num_matches);
         for (size_t i = 0; i < rule->num_matches; i++)
                 fprintf(fp, " '%.*s'", (int)rule->match[i].len, rule->match[i].data);
-        fprintf(fp, "\n        mods:");
+        fprintf(fp, "\n      mods:");
         for (size_t i = 0; i < CASE_COUNT - 1; i++) {
                 const mod_t *mod = &rule->mods[i];
                 fprintf(fp, " -%zu+'%.*s'", mod->cnt_remove, (int)mod->add_suffix.len, mod->add_suffix.data);
@@ -414,7 +415,7 @@ static void dump_rule(const mod_rule_t *rule, FILE *fp)
 static void dump_rules(const mod_rule_arr_t *arr, FILE *fp)
 {
         for (size_t i = 0; i < arr->num_rules; i++) {
-                fprintf(fp, "      rule %zu\n", i);
+                fprintf(fp, "    rule %zu\n", i);
                 const mod_rule_t *rule = &arr->rules[i];
                 dump_rule(rule, fp);
         }
@@ -436,23 +437,10 @@ static void dump_context(const petr_context_t *ctx, FILE *fp)
                         break;
                 }
 
-                for (int gender = 0; gender < GENDER_COUNT; gender++) {
-                        switch (gender) {
-                        case GEND_MALE:
-                                fprintf(fp, "  male\n");
-                                break;
-                        case GEND_FEMALE:
-                                fprintf(fp, "  female\n");
-                                break;
-                        case GEND_ANDROGYNOUS:
-                                fprintf(fp, "  androgynous\n");
-                                break;
-                        }
-                        fprintf(fp, "    exceptions\n");
-                        dump_rules(&ctx->sets[kind][gender].exceptions, fp);
-                        fprintf(fp, "    suffixes\n");
-                        dump_rules(&ctx->sets[kind][gender].suffixes, fp);
-                }
+                fprintf(fp, "  exceptions\n");
+                dump_rules(&ctx->sets[kind].exceptions, fp);
+                fprintf(fp, "  suffixes\n");
+                dump_rules(&ctx->sets[kind].suffixes, fp);
         }
 }
 #endif
@@ -498,30 +486,37 @@ static void free_rules_arr(mod_rule_arr_t *arr)
 void petr_free_context(petr_context_t *ctx)
 {
         for (size_t i = 0; i < NAME_KIND_COUNT; i++) {
-                for (size_t j = 0; j < GENDER_COUNT; j++) {
-                        rules_set_t *rules = &ctx->sets[i][j];
-                        free_rules_arr(&rules->exceptions);
-                        free_rules_arr(&rules->suffixes);
-                }
+                rules_set_t *rules = &ctx->sets[i];
+                free_rules_arr(&rules->exceptions);
+                free_rules_arr(&rules->suffixes);
         }
         yaml_document_delete(&ctx->yaml);
         free(ctx);
 }
 
+static bool is_gender_compatible(petr_gender_t expected, petr_gender_t actual)
+{
+        return actual == GEND_ANDROGYNOUS || actual == expected;
+}
+
 /**
  * Try to match the name against rules array
  *
- * @param arr Rules array
- * @param first_word If true, this is the first word of a multi-part name
- * @param full_match If true, match full name, otherwise match ending
- * @param name Name string
- * @returns Matched rule, or NULL if not found
+ * @param arr           Rules array
+ * @param first_word    If true, this is the first word of a multi-part name
+ * @param gender        Grammatical gender
+ * @param full_match    If true, match full name, otherwise match ending
+ * @param name          Name string
+ * @returns             Matched rule, or NULL if not found
  */
-static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool first_word, bool full_match, cbuf_t name)
+static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool first_word, petr_gender_t gender, bool full_match,
+                                     cbuf_t name)
 {
         for (size_t i = 0; i < arr->num_rules; i++) {
                 const mod_rule_t *rule = &arr->rules[i];
                 if (rule->first_word && !first_word)
+                        continue;
+                if (!is_gender_compatible(gender, rule->gender))
                         continue;
                 for (size_t j = 0; j < rule->num_matches; j++) {
                         cbuf_t rule_match = rule->match[j];
@@ -556,13 +551,14 @@ static int apply_rule(const mod_t *mod, cbuf_t name, buf_t dest, size_t *dest_le
         return append_buf(mod->add_suffix, dest, dest_len);
 }
 
-static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, petr_case_t dest_case, buf_t dest, size_t *dest_len)
+static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, petr_gender_t gender,
+                        petr_case_t dest_case, buf_t dest, size_t *dest_len)
 {
         /* First try to search in exceptions. */
-        const mod_rule_t *rule = match_rules(&rules->exceptions, first_word, true, name);
+        const mod_rule_t *rule = match_rules(&rules->exceptions, first_word, gender, true, name);
         /* If not found, search in suffixes. */
         if (rule == NULL)
-                rule = match_rules(&rules->suffixes, first_word, false, name);
+                rule = match_rules(&rules->suffixes, first_word, gender, false, name);
         /* If not found, copy as-is. */
         if (rule == NULL)
                 return append_buf(name, dest, dest_len);
@@ -570,7 +566,8 @@ static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, 
         return apply_rule(&rule->mods[dest_case - 1], name, dest, dest_len);
 }
 
-static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_case_t dest_case, buf_t dest, size_t *dest_len)
+static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_gender_t gender, petr_case_t dest_case, buf_t dest,
+                      size_t *dest_len)
 {
         if (dest_case == CASE_NOMINATIVE)
                 return copy_buf(name, dest, dest_len);
@@ -589,7 +586,7 @@ static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_case_t dest_ca
                         part.len = name.len;
                         name.len = 0;
                 }
-                int rc = inflect_part(rules, part, maybe_first && found_dash, dest_case, dest, dest_len);
+                int rc = inflect_part(rules, part, maybe_first && found_dash, gender, dest_case, dest, dest_len);
                 if (rc != 0)
                         return rc;
                 if (found_dash) {
@@ -606,10 +603,10 @@ static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_case_t dest_ca
 int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
                  petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len)
 {
-        const rules_set_t *rules = &ctx->sets[kind][gender];
+        const rules_set_t *rules = &ctx->sets[kind];
         buf_t dest_buf = { dest, dest_buf_size };
         cbuf_t name = { data, len };
-        return do_inflect(rules, name, dest_case, dest_buf, dest_len);
+        return do_inflect(rules, name, gender, dest_case, dest_buf, dest_len);
 }
 
 int petr_inflect_first_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
