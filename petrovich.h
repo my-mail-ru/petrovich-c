@@ -1,8 +1,6 @@
-/**
- * @file petrovich.h
- *
- * @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved.
- */
+/// @file petrovich.h
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
 
 #ifndef PETROVICH_H
 #define PETROVICH_H

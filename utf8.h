@@ -1,8 +1,6 @@
-/**
- * @file utf8.h
- *
- * @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved.
- */
+/// @file utf8.h
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
 
 #ifndef UTF8_H
 #define UTF8_H
@@ -10,11 +8,9 @@
 #include <stdbool.h>
 #include "buffer.h"
 
-/**
- * Remove one UTF-8 codepoint from the end of the string.
- *
- * @returns Length of the result.
- */
+/// Remove one UTF-8 codepoint from the end of the string
+///
+/// @returns    Length of the result
 static inline size_t pop_one_codepoint(cbuf_t str)
 {
         do {

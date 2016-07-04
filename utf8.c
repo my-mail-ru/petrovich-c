@@ -1,25 +1,19 @@
-/**
- * @file utf8.c
- *
- * @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved.
- */
+/// @file utf8.c
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
 
 #include <stdint.h>
 
 #include "utf8.h"
 
-/**
- * Magic constants for get_codepoint
- */
+/// Magic constants for get_codepoint
 static const uint32_t g_offsets_for_utf8[4] = { 0x00000000UL, 0x00003080UL, 0x000E2080UL, 0x03C82080UL };
 
-/**
- * Read one codepoint from a UTF-8 string
- *
- * @param buf   Buffer containing the string
- * @param cp    Destination for codepoint
- * @return      Number of bytes read. 0 in case of error
- */
+/// Read one codepoint from a UTF-8 string
+///
+/// @param buf   Buffer containing the string
+/// @param cp    Destination for codepoint
+/// @return      Number of bytes read. 0 in case of error
 static size_t get_codepoint(cbuf_t buf, uint32_t *cp)
 {
         if (buf.len == 0)
@@ -55,9 +49,7 @@ static size_t get_codepoint(cbuf_t buf, uint32_t *cp)
         return extra_len + 1;
 }
 
-/**
- * Convert a Russian unicode codepoint to lowercase. Return unchanged condepoint for all other languages.
- */
+/// Convert a Russian unicode codepoint to lowercase. Return unchanged condepoint for all other languages.
 static uint32_t rus_lowercase(uint32_t cp)
 {
         if (cp >= 0x410 && cp <= 0x042F)
@@ -67,11 +59,9 @@ static uint32_t rus_lowercase(uint32_t cp)
         return cp;
 }
 
-/**
- * Compare two Russian UTF-8 strings case-insensitive (other languages will be case-sensitive)
- *
- * @returns True, if strings are equal
- */
+/// Compare two Russian UTF-8 strings case-insensitive (other languages will be case-sensitive)
+///
+/// @returns    True, if strings are equal
 bool rus_utf8_streq(cbuf_t s1, cbuf_t s2)
 {
         while (s1.len != 0 && s2.len != 0) {

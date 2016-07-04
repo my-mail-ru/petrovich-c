@@ -1,3 +1,7 @@
+/// @file test.c
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>

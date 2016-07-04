@@ -1,8 +1,6 @@
-/**
- * @file petrovich.c
- *
- * @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved.
- */
+/// @file petrovich.c
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
 
 #include <string.h>
 #include <stdlib.h>
@@ -30,41 +28,48 @@
         } while (0)
 #endif
 
+/// Modification rule for a single case
 typedef struct {
-        size_t cnt_remove;
-        cbuf_t add_suffix;
+        size_t cnt_remove;              ///< Number of codepoints to remove
+        cbuf_t add_suffix;              ///< Suffix to add
 } mod_t;
 
+/// Match rules and modification rules for all cases
 typedef struct {
-        size_t num_matches;
-        cbuf_t *match;
-        mod_t mods[CASE_COUNT - 1];
-        petr_gender_t gender;
-        bool first_word;
+        size_t num_matches;             ///< Size of \c match array
+        cbuf_t *match;                  ///< Suffixes (or whole words) to match against
+        mod_t mods[CASE_COUNT - 1];     ///< Modification rules for each case except nominative
+        petr_gender_t gender;           ///< Grammatical gender
+        bool first_word;                ///< If true, only match against first word in multi-word last name
 } mod_rule_t;
 
+/// Array of mod_rule_t
 typedef struct {
-        size_t num_rules;
-        mod_rule_t *rules;
+        size_t num_rules;               ///< Number of rules in array
+        mod_rule_t *rules;              ///< Rules array
 } mod_rule_arr_t;
 
+/// Parsed YAML node corresponding to a single mod_rule_t
 typedef struct {
-        petr_gender_t gender;
-        const yaml_node_t *test;
-        const yaml_node_t *mods;
-        const yaml_node_t *tags;
+        petr_gender_t gender;           ///< \c gender property
+        const yaml_node_t *test;        ///< \c test property
+        const yaml_node_t *mods;        ///< \c mods property
+        const yaml_node_t *tags;        ///< \c tags property, optional
 } yaml_mod_rules_t;
 
+/// Set of rules for a single name kind (i.e., first name, last name or middle name)
 typedef struct {
         mod_rule_arr_t suffixes;
         mod_rule_arr_t exceptions;
 } rules_set_t;
 
+/// Complete rules set
 struct petr_context {
         yaml_document_t yaml;
         rules_set_t sets[NAME_KIND_COUNT];
 };
 
+/// Allocate and initialize context
 int petr_init_from_file(const char *path, petr_context_t **ctx)
 {
         int rc = -1;
@@ -97,9 +102,7 @@ out:
         return rc;
 }
 
-/**
- * Parse one rule set
- */
+/// Parse one rule set
 static int parse_mod_rules(petr_context_t *ctx, const yaml_node_t *node, yaml_mod_rules_t *dest)
 {
         bool have_gender = false;
@@ -156,9 +159,7 @@ static int parse_mod_rules(petr_context_t *ctx, const yaml_node_t *node, yaml_mo
         return 0;
 }
 
-/**
- * Load data from one yaml_mod_rules_t instance
- */
+/// Load data from one yaml_mod_rules_t instance
 static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_node, mod_rule_t *dest)
 {
         const yaml_node_t *test = parsed_node->test;
@@ -218,7 +219,7 @@ static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_no
                 buf.data = (const char *)node->data.scalar.value;
                 buf.len = node->data.scalar.length;
                 if (buf.len == 1 && buf.data[0] == '.') {
-                        /* '.' means 'no change needed */
+                        // '.' means 'no change needed
                         continue;
                 }
                 size_t minus_count;
@@ -256,9 +257,7 @@ static int load_mod_rules(petr_context_t *ctx, const yaml_mod_rules_t *parsed_no
         return 0;
 }
 
-/**
- * Load a single rules array (either suffixes or exceptions of some name kind)
- */
+/// Load a single rules array (either suffixes or exceptions of some name kind)
 static int load_rule_arr(petr_context_t *ctx, const yaml_node_t *node, mod_rule_arr_t *dest)
 {
         if (node->type != YAML_SEQUENCE_NODE) {
@@ -290,9 +289,7 @@ static int load_rule_arr(petr_context_t *ctx, const yaml_node_t *node, mod_rule_
         return 0;
 }
 
-/**
- * Load rules for a single name kind
- */
+/// Load rules for a single name kind
 static int load_name_kind(petr_context_t *ctx, const yaml_node_t *node, rules_set_t *dest)
 {
         if (node->type != YAML_MAPPING_NODE) {
@@ -327,9 +324,7 @@ static int load_name_kind(petr_context_t *ctx, const yaml_node_t *node, rules_se
         return 0;
 }
 
-/**
- * Load all rules into ctx
- */
+/// Load all rules into ctx
 static int load_yaml(petr_context_t *ctx)
 {
         const yaml_node_t *root = yaml_document_get_root_node(&ctx->yaml);
@@ -342,10 +337,10 @@ static int load_yaml(petr_context_t *ctx)
                 return ERR_INVALID_RULES;
         }
 
-        /* Which rules sets are initialized. */
+        // Which rules sets are initialized
         bool init_rules[NAME_KIND_COUNT] = { 0 };
 
-        /* Iterate over the root mapping node. */
+        // Iterate over the root mapping node
         for (yaml_node_pair_t *p = root->data.mapping.pairs.start; p != root->data.mapping.pairs.top; p++) {
                 yaml_node_t *key_node = yaml_document_get_node(&ctx->yaml, p->key);
                 yaml_node_t *val_node = yaml_document_get_node(&ctx->yaml, p->value);
@@ -375,7 +370,7 @@ static int load_yaml(petr_context_t *ctx)
                 init_rules[kind] = true;
         }
 
-        /* Check that the YAML document indeed contains all 3 rules sets. */
+        // Check that the YAML document indeed contains all 3 rules sets
         for (int i = 0; i < NAME_KIND_COUNT; i++) {
                 if (!init_rules[i]) {
                         debug_err("missing rules %d", i);
@@ -386,6 +381,7 @@ static int load_yaml(petr_context_t *ctx)
 }
 
 #ifndef NDEBUG
+/// Output a \c mod_rule_t to IO stream. For debugging purposes.
 static void dump_rule(const mod_rule_t *rule, FILE *fp)
 {
         const char *gender_str;
@@ -412,6 +408,7 @@ static void dump_rule(const mod_rule_t *rule, FILE *fp)
         fprintf(fp, "\n");
 }
 
+/// Output a \c mod_rule_arr_t to IO stream. For debugging purposes.
 static void dump_rules(const mod_rule_arr_t *arr, FILE *fp)
 {
         for (size_t i = 0; i < arr->num_rules; i++) {
@@ -421,6 +418,7 @@ static void dump_rules(const mod_rule_arr_t *arr, FILE *fp)
         }
 }
 
+/// Output a \c petr_context_t to IO stream. For debugging purposes.
 __attribute__((used))
 static void dump_context(const petr_context_t *ctx, FILE *fp)
 {
@@ -473,6 +471,7 @@ out:
         return -1;
 }
 
+/// Free an instance of \c mod_rule_arr_t
 static void free_rules_arr(mod_rule_arr_t *arr)
 {
         if (!arr->rules)
@@ -499,16 +498,14 @@ static bool is_gender_compatible(petr_gender_t expected, petr_gender_t actual)
         return actual == GEND_ANDROGYNOUS || actual == expected;
 }
 
-/**
- * Try to match the name against rules array
- *
- * @param arr           Rules array
- * @param first_word    If true, this is the first word of a multi-part name
- * @param gender        Grammatical gender
- * @param full_match    If true, match full name, otherwise match ending
- * @param name          Name string
- * @returns             Matched rule, or NULL if not found
- */
+/// Try to match the name against rules array
+///
+/// @param arr           Rules array
+/// @param first_word    If true, this is the first word of a multi-part name
+/// @param gender        Grammatical gender
+/// @param full_match    If true, match full name, otherwise match ending
+/// @param name          Name string
+/// @returns             Matched rule, or NULL if not found
 static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool first_word, petr_gender_t gender, bool full_match,
                                      cbuf_t name)
 {
@@ -554,12 +551,12 @@ static int apply_rule(const mod_t *mod, cbuf_t name, buf_t dest, size_t *dest_le
 static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, petr_gender_t gender,
                         petr_case_t dest_case, buf_t dest, size_t *dest_len)
 {
-        /* First try to search in exceptions. */
+        // First try to search in exceptions.
         const mod_rule_t *rule = match_rules(&rules->exceptions, first_word, gender, true, name);
-        /* If not found, search in suffixes. */
+        // If not found, search in suffixes.
         if (rule == NULL)
                 rule = match_rules(&rules->suffixes, first_word, gender, false, name);
-        /* If not found, copy as-is. */
+        // If not found, copy as-is.
         if (rule == NULL)
                 return append_buf(name, dest, dest_len);
 
