@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+#define PETR_VISIBLE    __attribute__((visibility("default")))
+
 typedef enum {
         ERR_INVALID_RULES       = -1,
         ERR_NOMEM               = -2,
@@ -36,16 +38,28 @@ typedef enum {
 
 typedef struct petr_context petr_context_t;
 
+PETR_VISIBLE
 int petr_init_from_file(const char *path, petr_context_t **ctx);
+
+PETR_VISIBLE
 int petr_init_from_string(const char *data, size_t len, petr_context_t **ctx);
+
+PETR_VISIBLE
 void petr_free_context(petr_context_t *ctx);
 
+PETR_VISIBLE
 int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
                  petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
+
+PETR_VISIBLE
 int petr_inflect_first_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                             petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
+
+PETR_VISIBLE
 int petr_inflect_middle_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                              petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
+
+PETR_VISIBLE
 int petr_inflect_last_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                            petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
 

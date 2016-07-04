@@ -6,5 +6,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -Wmissing-declaration
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Werror")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DNDEBUG")
-add_executable(petr_test petrovich.c utf8.c test.c)
-target_link_libraries(petr_test yaml)
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility=hidden")
+
+# petrovich-c library
+add_library(petrovich SHARED petrovich.c utf8.c)
+target_link_libraries(petrovich yaml)
+
+# Sample test program
+add_executable(petr_test test.c)
+target_link_libraries(petr_test petrovich)
