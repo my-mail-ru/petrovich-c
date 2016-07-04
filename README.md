@@ -15,7 +15,8 @@ This library requires:
 
 ## Third-party components
 
-The library uses a rules file, available from petrovich [github repo](https://github.com/petrovich/petrovich-rules).
+The library uses a [rules file](rules.yml), taken from petrovich
+[github repo](https://github.com/petrovich/petrovich-rules).
 
 ## Examples
 

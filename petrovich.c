@@ -13,6 +13,8 @@
 #include <yaml.h>
 
 #include "petrovich.h"
+#include "buffer.h"
+#include "utf8.h"
 
 #define NAME_KIND_COUNT         (NAME_LAST + 1)
 #define GENDER_COUNT            (GEND_ANDROGYNOUS + 1)
@@ -27,16 +29,6 @@
                 abort();                      \
         } while (0)
 #endif
-
-typedef struct {
-        char *data;
-        size_t len;
-} buf_t;
-
-typedef struct {
-        const char *data;
-        size_t len;
-} cbuf_t;
 
 typedef struct {
         size_t cnt_remove;
@@ -520,88 +512,95 @@ void petr_free_context(petr_context_t *ctx)
  * Try to match the name against rules array
  *
  * @param arr Rules array
+ * @param first_word If true, this is the first word of a multi-part name
  * @param full_match If true, match full name, otherwise match ending
  * @param name Name string
  * @returns Matched rule, or NULL if not found
  */
-static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool full_match, cbuf_t name)
+static const mod_rule_t *match_rules(const mod_rule_arr_t *arr, bool first_word, bool full_match, cbuf_t name)
 {
         for (size_t i = 0; i < arr->num_rules; i++) {
                 const mod_rule_t *rule = &arr->rules[i];
+                if (rule->first_word && !first_word)
+                        continue;
                 for (size_t j = 0; j < rule->num_matches; j++) {
-                        cbuf_t match = rule->match[j];
-                        if (match.len > name.len)
+                        cbuf_t rule_match = rule->match[j];
+                        if (rule_match.len > name.len)
                                 continue;
-                        if (full_match && match.len != name.len)
-                                continue;
-                        if (memcmp(name.data + name.len - match.len, match.data, match.len) == 0)
+                        cbuf_t name_match;
+                        if (full_match) {
+                                if (rule_match.len != name.len)
+                                        continue;
+                                name_match.data = name.data;
+                                name_match.len = name.len;
+                        } else {
+                                size_t len_cp = count_codepoints(rule_match);
+                                size_t prefix_len = pop_n_codepoints(name, len_cp);
+                                name_match.data = name.data + prefix_len;
+                                name_match.len = name.len - prefix_len;
+                        }
+                        if (rus_utf8_streq(name_match, rule_match))
                                 return rule;
                 }
         }
         return NULL;
 }
 
-static int copy_buf(cbuf_t src, buf_t dest, size_t *dest_len)
-{
-        if (dest.len < src.len + 1)
-                return ERR_BUF;
-
-        memcpy(dest.data, src.data, src.len);
-        *dest_len = src.len;
-        dest.data[src.len] = '\0';
-        return 0;
-}
-
-static int append_buf(cbuf_t src, buf_t dest, size_t *dest_len)
-{
-        if (dest.len < src.len + *dest_len + 1)
-                return ERR_BUF;
-
-        memcpy(dest.data + *dest_len, src.data, src.len);
-        (*dest_len) += src.len;
-        dest.data[*dest_len] = '\0';
-        return 0;
-}
-
-/**
- * Remove one UTF-8 codepoint from the end of the string.
- *
- * @returns Length of the result.
- */
-static size_t pop_one_codepoint(cbuf_t str)
-{
-        while (str.len != 0 && (str.data[str.len - 1] & 0xC0) == 0x80)
-                str.len--;
-        return str.len;
-}
-
 static int apply_rule(const mod_t *mod, cbuf_t name, buf_t dest, size_t *dest_len)
 {
         cbuf_t trimmed = name;
-        for (size_t i = 0; i < mod->cnt_remove; i++)
-                trimmed.len = pop_one_codepoint(trimmed);
-
-        int rc = copy_buf(trimmed, dest, dest_len);
+        trimmed.len = pop_n_codepoints(trimmed, mod->cnt_remove);
+        int rc = append_buf(trimmed, dest, dest_len);
         if (rc != 0)
                 return rc;
         return append_buf(mod->add_suffix, dest, dest_len);
+}
+
+static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, petr_case_t dest_case, buf_t dest, size_t *dest_len)
+{
+        /* First try to search in exceptions. */
+        const mod_rule_t *rule = match_rules(&rules->exceptions, first_word, true, name);
+        /* If not found, search in suffixes. */
+        if (rule == NULL)
+                rule = match_rules(&rules->suffixes, first_word, false, name);
+        /* If not found, copy as-is. */
+        if (rule == NULL)
+                return append_buf(name, dest, dest_len);
+
+        return apply_rule(&rule->mods[dest_case - 1], name, dest, dest_len);
 }
 
 static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_case_t dest_case, buf_t dest, size_t *dest_len)
 {
         if (dest_case == CASE_NOMINATIVE)
                 return copy_buf(name, dest, dest_len);
-
-        /* First try to search in exceptions. */
-        const mod_rule_t *rule = match_rules(&rules->exceptions, true, name);
-        /* If not found, search in suffixes. */
-        if (rule == NULL)
-                rule = match_rules(&rules->suffixes, false, name);
-        /* If not found, copy as-is. */
-        if (rule == NULL)
-                return copy_buf(name, dest, dest_len);
-
-        return apply_rule(&rule->mods[dest_case - 1], name, dest, dest_len);
+        *dest_len = 0;
+        bool maybe_first = true;
+        while (name.len != 0) {
+                const char *dash_pos = memchr(name.data, '-', name.len);
+                cbuf_t part;
+                part.data = name.data;
+                bool found_dash = (dash_pos != NULL);
+                if (found_dash) {
+                        part.len = dash_pos - name.data;
+                        name.data += part.len + 1;
+                        name.len -= part.len + 1;
+                } else {
+                        part.len = name.len;
+                        name.len = 0;
+                }
+                int rc = inflect_part(rules, part, maybe_first && found_dash, dest_case, dest, dest_len);
+                if (rc != 0)
+                        return rc;
+                if (found_dash) {
+                        cbuf_t dash_buf = { "-", 1 };
+                        rc = append_buf(dash_buf, dest, dest_len);
+                        if (rc != 0)
+                                return rc;
+                }
+                maybe_first = false;
+        }
+        return 0;
 }
 
 int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
