@@ -69,8 +69,12 @@ struct petr_context {
         rules_set_t sets[NAME_KIND_COUNT];
 };
 
-/// Allocate and initialize context
-int petr_init_from_file(const char *path, petr_context_t **ctx)
+/// Initialize library context from the rules file
+///
+/// @param path         Path of the rules YAML file
+/// @param pctx         Pointer to context object (output parameter)
+/// @returns            Error code (0, if succeeded)
+int petr_init_from_file(const char *path, petr_context_t **pctx)
 {
         int rc = -1;
         FILE *fp = fopen(path, "r");
@@ -93,7 +97,7 @@ int petr_init_from_file(const char *path, petr_context_t **ctx)
                 debug_err("failed to read rules");
                 goto free_mem;
         }
-        rc = petr_init_from_string(buf, sz, ctx);
+        rc = petr_init_from_string(buf, sz, pctx);
 free_mem:
         free(buf);
 close_file:
@@ -443,6 +447,12 @@ static void dump_context(const petr_context_t *ctx, FILE *fp)
 }
 #endif
 
+/// Initialize library context from the rules file contents
+///
+/// @param data         Contents of the rules file
+/// @param len          Length of \c data
+/// @param pctx         Pointer to context object (output parameter)
+/// @returns            Error code (0, if succeeded)
 int petr_init_from_string(const char *data, size_t len, petr_context_t **pctx)
 {
         petr_context_t *ctx = (petr_context_t *)calloc(sizeof(petr_context_t), 1);
@@ -482,6 +492,9 @@ static void free_rules_arr(mod_rule_arr_t *arr)
         free(arr->rules);
 }
 
+/// Free library context
+///
+/// @param ctx          Context allocated by \c petr_init_from_file or \c petr_init_from_string
 void petr_free_context(petr_context_t *ctx)
 {
         for (size_t i = 0; i < NAME_KIND_COUNT; i++) {
@@ -597,6 +610,18 @@ static int do_inflect(const rules_set_t *rules, cbuf_t name, petr_gender_t gende
         return 0;
 }
 
+/// Inflect a name
+///
+/// @param ctx                  Library context object
+/// @param data                 Name to inflect
+/// @param len                  Length of \c data
+/// @param kind                 Type of name (e.g., first name)
+/// @param gender               Grammatical gender
+/// @param dest_case            Required grammatical case
+/// @param dest                 Destination buffer
+/// @param dest_buf_size        Size of \c dest
+/// @param dest_len             Actual number of bytes written to \c dest (excluding terminating NUL)
+/// @returns                    Error code (0, if succeed)
 int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_name_kind_t kind, petr_gender_t gender,
                  petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len)
 {
@@ -606,18 +631,51 @@ int petr_inflect(const petr_context_t *ctx, const char *data, size_t len, petr_n
         return do_inflect(rules, name, gender, dest_case, dest_buf, dest_len);
 }
 
+/// Inflect first name
+///
+/// @param ctx                  Library context object
+/// @param data                 Name to inflect
+/// @param len                  Length of \c data
+/// @param gender               Grammatical gender
+/// @param dest_case            Required grammatical case
+/// @param dest                 Destination buffer
+/// @param dest_buf_size        Size of \c dest
+/// @param dest_len             Actual number of bytes written to \c dest (excluding terminating NUL)
+/// @returns                    Error code (0, if succeed)
 int petr_inflect_first_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                             petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len)
 {
         return petr_inflect(ctx, data, len, NAME_FIRST, gender, dest_case, dest, dest_buf_size, dest_len);
 }
 
+/// Inflect middle name
+///
+/// @param ctx                  Library context object
+/// @param data                 Name to inflect
+/// @param len                  Length of \c data
+/// @param gender               Grammatical gender
+/// @param dest_case            Required grammatical case
+/// @param dest                 Destination buffer
+/// @param dest_buf_size        Size of \c dest
+/// @param dest_len             Actual number of bytes written to \c dest (excluding terminating NUL)
+/// @returns                    Error code (0, if succeed)
 int petr_inflect_middle_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                              petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len)
 {
         return petr_inflect(ctx, data, len, NAME_MIDDLE, gender, dest_case, dest, dest_buf_size, dest_len);
 }
 
+/// Inflect last name
+///
+/// @param ctx                  Library context object
+/// @param data                 Name to inflect
+/// @param len                  Length of \c data
+/// @param gender               Grammatical gender
+/// @param dest_case            Required grammatical case
+/// @param dest                 Destination buffer
+/// @param dest_buf_size        Size of \c dest
+/// @param dest_len             Actual number of bytes written to \c dest (excluding terminating NUL)
+/// @returns                    Error code (0, if succeed)
 int petr_inflect_last_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                            petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len)
 {

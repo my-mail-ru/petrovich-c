@@ -9,18 +9,21 @@
 
 #define PETR_VISIBLE    __attribute__((visibility("default")))
 
+/// Error codes
 typedef enum {
-        ERR_INVALID_RULES       = -1,
-        ERR_NOMEM               = -2,
-        ERR_BUF                 = -3,
+        ERR_INVALID_RULES       = -1,   ///< Invalid 'rules.yml' file
+        ERR_NOMEM               = -2,   ///< Failed to allocate memory
+        ERR_BUF                 = -3,   ///< Output buffer too small
 } petr_error_t;
 
+/// Type of name
 typedef enum {
         NAME_FIRST,
         NAME_MIDDLE,
         NAME_LAST,
 } petr_name_kind_t;
 
+/// Grammatical case
 typedef enum {
         CASE_NOMINATIVE,
         CASE_GENITIVE,
@@ -30,6 +33,7 @@ typedef enum {
         CASE_PREPOSITIONAL
 } petr_case_t;
 
+/// Grammatical gender
 typedef enum {
         GEND_MALE,
         GEND_FEMALE,
@@ -39,10 +43,10 @@ typedef enum {
 typedef struct petr_context petr_context_t;
 
 PETR_VISIBLE
-int petr_init_from_file(const char *path, petr_context_t **ctx);
+int petr_init_from_file(const char *path, petr_context_t **pctx);
 
 PETR_VISIBLE
-int petr_init_from_string(const char *data, size_t len, petr_context_t **ctx);
+int petr_init_from_string(const char *data, size_t len, petr_context_t **pctx);
 
 PETR_VISIBLE
 void petr_free_context(petr_context_t *ctx);

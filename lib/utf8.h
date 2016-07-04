@@ -21,6 +21,9 @@ static inline size_t pop_one_codepoint(cbuf_t str)
         return str.len ? str.len - 1 : 0;
 }
 
+/// Remove \c n UTF-8 codepoint from the end of the string
+///
+/// @returns    Length of the result
 static inline size_t pop_n_codepoints(cbuf_t str, size_t n)
 {
         for (size_t i = 0; i < n; i++)
@@ -28,6 +31,7 @@ static inline size_t pop_n_codepoints(cbuf_t str, size_t n)
         return str.len;
 }
 
+/// Count number of UTF-8 codepoints in the string
 static inline size_t count_codepoints(cbuf_t str)
 {
         size_t cnt = 0;
