@@ -9,9 +9,11 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DNDEBUG")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility=hidden")
 
 # petrovich-c library
-add_library(petrovich SHARED petrovich.c utf8.c)
+add_library(petrovich SHARED lib/petrovich.c lib/utf8.c)
+target_include_directories(petrovich PUBLIC include)
 target_link_libraries(petrovich yaml)
 
 # Sample test program
-add_executable(petr_test test.c)
+add_executable(petr_test test/test.c)
+target_include_directories(petr_test PRIVATE include)
 target_link_libraries(petr_test petrovich)

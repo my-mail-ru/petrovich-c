@@ -20,4 +20,4 @@ The library uses a [rules file](rules.yml), taken from petrovich
 
 ## Examples
 
-See [test.c](test.c) for API usage example.
+See [test.c](test/test.c) for API usage example.
