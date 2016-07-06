@@ -42,6 +42,10 @@ typedef enum {
 
 typedef struct petr_context petr_context_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 PETR_VISIBLE
 int petr_init_from_file(const char *path, petr_context_t **pctx);
 
@@ -66,5 +70,9 @@ int petr_inflect_middle_name(const petr_context_t *ctx, const char *data, size_t
 PETR_VISIBLE
 int petr_inflect_last_name(const petr_context_t *ctx, const char *data, size_t len, petr_gender_t gender,
                            petr_case_t dest_case, char *dest, size_t dest_buf_size, size_t *dest_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
