@@ -68,6 +68,10 @@ bool rus_utf8_streq(cbuf_t s1, cbuf_t s2)
                 uint32_t cp1, cp2;
                 size_t l1 = get_codepoint(s1, &cp1);
                 size_t l2 = get_codepoint(s2, &cp2);
+                if (l1 == 0 && l2 == 0)
+                        break;
+                if (l1 == 0 || l2 == 0)
+                        return false;
                 if (rus_lowercase(cp1) != rus_lowercase(cp2))
                         return false;
                 s1.data += l1;
