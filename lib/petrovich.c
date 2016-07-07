@@ -18,7 +18,7 @@
 #define GENDER_COUNT            (GEND_ANDROGYNOUS + 1)
 #define CASE_COUNT              (CASE_PREPOSITIONAL + 1)
 
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(PETROVICH_NDEBUG)
 #define debug_err(...) ((void)(0 && printf(__VA_ARGS__)))
 #else
 #define debug_err(...)                        \
@@ -386,7 +386,7 @@ static int load_yaml(petr_context_t *ctx)
         return 0;
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !defined(PETROVICH_NDEBUG)
 /// Output a \c mod_rule_t to IO stream. For debugging purposes.
 static void dump_rule(const mod_rule_t *rule, FILE *fp)
 {

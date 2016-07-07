@@ -31,7 +31,16 @@ def main():
     src_dir = os.path.dirname(__file__)
     dest_file = pjoin(src_dir, 'build', 'petrovich.c')
     with open(dest_file, 'w') as dest:
-        dest.write('#include "petrovich.h"\n')
+        dest.write('''/// @file petrovich.c
+///
+/// @copyright Copyright (c) Mail.Ru Group, 2016. All rights reserved. MIT License.
+
+// Note: this file is automatically combined from petrovich-c library sources
+
+#define PETROVICH_NDEBUG
+
+#include "petrovich.h"''')
+
         for name in ['buffer.h', 'utf8.h', 'utf8.c', 'petrovich.c']:
             full_name = pjoin(src_dir, 'lib', name)
             process_file(full_name, dest)
