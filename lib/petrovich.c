@@ -76,7 +76,7 @@ struct petr_context {
 /// @returns            Error code (0, if succeeded)
 int petr_init_from_file(const char *path, petr_context_t **pctx)
 {
-        int rc = -1;
+        int rc = ERR_FILE;
         FILE *fp = fopen(path, "r");
         if (!fp) {
                 debug_err("failed to open rules file");
@@ -90,8 +90,10 @@ int petr_init_from_file(const char *path, petr_context_t **pctx)
         }
         fseek(fp, 0, SEEK_SET);
         char *buf = (char *)malloc(sz);
-        if (!buf)
+        if (!buf) {
+                rc = ERR_NOMEM;
                 goto close_file;
+        }
         uint64_t cnt_read = fread(buf, 1, sz, fp);
         if (cnt_read != sz) {
                 debug_err("failed to read rules");

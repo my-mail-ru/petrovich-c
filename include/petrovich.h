@@ -14,6 +14,7 @@ typedef enum {
         ERR_INVALID_RULES       = -1,   ///< Invalid 'rules.yml' file
         ERR_NOMEM               = -2,   ///< Failed to allocate memory
         ERR_BUF                 = -3,   ///< Output buffer too small
+        ERR_FILE                = -4,   ///< Error reading file
 } petr_error_t;
 
 /// Type of name
