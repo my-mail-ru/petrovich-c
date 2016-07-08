@@ -36,7 +36,7 @@ static size_t get_codepoint(cbuf_t buf, uint32_t *cp)
                 return 0;
 
         uint32_t ch = 0;
-        const char *source = buf.data;
+        const unsigned char *source = (const unsigned char *)buf.data;
         switch (extra_len) {
                 case 3: ch += *source++; ch <<= 6;
                 case 2: ch += *source++; ch <<= 6;
