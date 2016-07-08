@@ -77,6 +77,7 @@ class TestPetrovich(unittest.TestCase):
     def test_caps(self):
         res = run_test(FIRST, FEMALE, 'ОЛЬГА')
         self.assertEqual(res[0], 'ОЛЬГА')
+        # FIXME: mixed case is ugly
         self.assertEqual(res[1], 'ОЛЬГи')
         self.assertEqual(res[2], 'ОЛЬГе')
         self.assertEqual(res[3], 'ОЛЬГу')
