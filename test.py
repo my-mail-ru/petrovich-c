@@ -93,5 +93,14 @@ class TestPetrovich(unittest.TestCase):
         self.assertEqual(res[4], 'latin')
         self.assertEqual(res[5], 'latin')
 
+    def test_single_char(self):
+        res = run_test(FIRST, FEMALE, 'я')
+        self.assertEqual(res[0], 'я')
+        self.assertEqual(res[1], 'я')
+        self.assertEqual(res[2], 'я')
+        self.assertEqual(res[3], 'я')
+        self.assertEqual(res[4], 'я')
+        self.assertEqual(res[5], 'я')
+
 if __name__ == '__main__':
     unittest.main()

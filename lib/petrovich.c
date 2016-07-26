@@ -566,6 +566,10 @@ static int apply_rule(const mod_t *mod, cbuf_t name, buf_t dest, size_t *dest_le
 static int inflect_part(const rules_set_t *rules, cbuf_t name, bool first_word, petr_gender_t gender,
                         petr_case_t dest_case, buf_t dest, size_t *dest_len)
 {
+        // Do not inflect single-character names
+        if (count_codepoints(name) <= 1)
+                return append_buf(name, dest, dest_len);
+
         // First try to search in exceptions.
         const mod_rule_t *rule = match_rules(&rules->exceptions, first_word, gender, true, name);
         // If not found, search in suffixes.
